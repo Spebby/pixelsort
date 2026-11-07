@@ -34,8 +34,11 @@
             pixelsort development commands
 
             Build:
-              nix build             Build the Python package
-              nix run               Run pixelsort
+              nix build             Build the GUI application
+              nix build .#cli       Build the CLI
+              nix build .#library   Build the Python library
+              nix run               Launch the GUI
+              nix run .#pixelsort   Run the CLI
               nix run .#help        Show this help message
 
             Development:
@@ -73,29 +76,103 @@
           pname = "pixelsort";
           version = "1.0.2";
           src = packageSource;
-
           format = "setuptools";
 
-          propagatedBuildInputs = with pythonPackages; [ pillow ];
-
+          propagatedBuildInputs = with pythonPackages; [
+            pillow
+            numpy
+          ];
           pythonImportsCheck = [ "pixelsort" ];
 
           meta = {
             description = "An image pixelsorter for Python";
-            homepage = "https://github.com/satyarth/pixelsort";
+            homepage = "https://github.com/spebby/pixelsort";
             license = lib.licenses.mit;
             platforms = lib.platforms.all;
           };
         };
 
+        # CLI environment deliberately excludes GUI dependencies.
         pythonEnv = python.withPackages (_: [ pixelsort ]);
 
         pixelsortCli = pkgs.writeShellApplication {
-          name = "pixelsort";
+          name = "pixelsort-cli";
           runtimeInputs = [ pythonEnv ];
           text = ''
             exec python -m pixelsort "$@"
           '';
+        };
+
+        # GUI environment adds PyGObject without changing the library's
+        # dependencies or requiring GTK for CLI users.
+        pythonGuiEnv = python.withPackages (_: [
+          pixelsort
+          pythonPackages.pygobject3
+        ]);
+
+        pixelsortGuiBase = pkgs.stdenv.mkDerivation {
+          pname = "pixelsort-gui";
+          version = "1.0.2";
+
+          dontUnpack = true;
+
+          nativeBuildInputs = [
+            pkgs.makeWrapper
+            pkgs.wrapGAppsHook4
+          ];
+
+          buildInputs = [
+            pythonGuiEnv
+            pkgs.gobject-introspection
+            pkgs.gtk4
+            pkgs.libadwaita
+            pkgs.adwaita-icon-theme
+            pkgs.gsettings-desktop-schemas
+          ];
+
+          installPhase = ''
+            runHook preInstall
+            mkdir -p "$out/bin"
+            makeWrapper ${pythonGuiEnv}/bin/python "$out/bin/pixelsort-gui" \
+              --add-flags "-m pixelsort.gui"
+            runHook postInstall
+          '';
+
+          meta = {
+            description = "GTK4/libadwaita graphical interface for pixelsort";
+            homepage = "https://github.com/spebby/pixelsort";
+            license = lib.licenses.mit;
+            platforms = lib.platforms.linux;
+            mainProgram = "pixelsort-gui";
+          };
+        };
+
+        pixelsortDesktopItem = pkgs.makeDesktopItem {
+          name = "pixelsort";
+          desktopName = "PixelSort";
+          genericName = "Pixel Sorting Image Editor";
+          comment = "Sort pixels in images";
+          exec = "${pixelsortGuiBase}/bin/pixelsort-gui";
+          icon = "image-x-generic";
+          terminal = false;
+          categories = [
+            "Graphics"
+            "RasterGraphics"
+          ];
+          keywords = [
+            "image"
+            "pixel"
+            "sorting"
+          ];
+        };
+
+        pixelsortGui = pkgs.symlinkJoin {
+          name = "pixelsort-gui";
+          paths = [
+            pixelsortGuiBase
+            pixelsortDesktopItem
+          ];
+          inherit (pixelsortGuiBase) meta;
         };
 
         lint =
@@ -107,7 +184,7 @@
             touch "$out"
           '';
 
-        gitHooks = pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux (
+        gitHooks = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux (
           git-hooks.lib.${system}.run {
             src = ./.;
             excludes = [ ];
@@ -127,15 +204,22 @@
       in
       {
         packages = {
-          default = pixelsortCli;
-          library = pixelsort;
+          default = pixelsortGui;
+          gui = pixelsortGui;
           cli = pixelsortCli;
+          library = pixelsort;
         };
 
         apps = {
-          pixelsort = {
+          gui = {
             type = "app";
-            program = "${pixelsortCli}/bin/pixelsort";
+            program = "${pixelsortGui}/bin/pixelsort-gui";
+            meta.description = "Launch the pixelsort GUI";
+          };
+
+          pixelsort-cli = {
+            type = "app";
+            program = "${pixelsortCli}/bin/pixelsort-cli";
             meta.description = "Run the pixelsort CLI";
           };
 
@@ -145,11 +229,11 @@
             meta.description = "Show available project commands";
           };
 
-          default = self.apps.${system}.pixelsort;
+          default = self.apps.${system}.gui;
         };
 
         checks = {
-          inherit pixelsort;
+          inherit pixelsort pixelsortGui;
 
           nixfmt = lint "nixfmt" [ pkgs.nixfmt ] "nixfmt --strict --check flake.nix";
           statix = lint "statix" [ pkgs.statix ] "statix check .";
@@ -157,17 +241,24 @@
           typos = lint "typos" [ pkgs.typos ] "typos";
 
           cli-help = pkgs.runCommand "pixelsort-cli-help" { } ''
-            ${pixelsort}/bin/pixelsort --help > "$out"
+            ${pixelsortCli}/bin/pixelsort --help > "$out"
           '';
         }
-        // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux { git-check = gitHooks; };
+        // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux { git-check = gitHooks; };
 
         formatter = pkgs.nixfmt;
 
         devShells.default = pkgs.mkShell {
           packages = [
-            pythonEnv
+            pythonGuiEnv
             pixelsortCli
+
+            pkgs.gtk4
+            pkgs.libadwaita
+            pkgs.adwaita-icon-theme
+            pkgs.gsettings-desktop-schemas
+            pkgs.gobject-introspection
+
             pkgs.nil
             pkgs.nixfmt
             pkgs.statix
@@ -182,5 +273,12 @@
           '';
         };
       }
-    );
+    )
+    // {
+      overlays.default = final: prev: {
+        pixelsort = self.packages.${final.stdenv.hostPlatform.system}.gui;
+        pixelsort-cli = self.packages.${final.stdenv.hostPlatform.system}.cli;
+        pixelsort-library = self.packages.${final.stdenv.hostPlatform.system}.library;
+      };
+    };
 }

@@ -1,75 +1,69 @@
-import functools
 import typing
 
+import numpy as np
+import numpy.typing as npt
 
-@functools.cache
-def lightness(pixel: typing.Tuple[int, int, int]) -> float:
+PixelArray = npt.NDArray[np.integer[typing.Any]]  # shape (..., 4)
+KeyArray = npt.NDArray[np.floating[typing.Any]]
+SortingFunction = typing.Callable[[PixelArray], KeyArray]
+
+
+def _rgb(pixels: PixelArray) -> tuple[KeyArray, KeyArray, KeyArray]:
+    return (
+        pixels[..., 0].astype(np.float64),
+        pixels[..., 1].astype(np.float64),
+        pixels[..., 2].astype(np.float64),
+    )
+
+
+def lightness(pixels: PixelArray) -> KeyArray:
     """Sort by the lightness of a pixel according to a HLS representation."""
-    # taken from rgb_to_hls
-    r, g, b = pixel[:3]
-    maxc = max(r, g, b)
-    minc = min(r, g, b)
-    return (minc + maxc) / 2.0
+    r, g, b = _rgb(pixels)
+    return (np.minimum(np.minimum(r, g), b) + np.maximum(np.maximum(r, g), b)) / 2.0
 
 
-@functools.cache
-def hue(pixel: typing.Tuple[int, int, int]) -> float:
+def hue(pixels: PixelArray) -> KeyArray:
     """Sort by the hue of a pixel according to a HLS representation."""
-    # taken from rgb_to_hls
-    r, g, b = pixel[:3]
-    maxc = max(r, g, b)
-    minc = min(r, g, b)
-    # XXX Can optimize (maxc+minc) and (maxc-minc)
-    if minc == maxc:
-        return 0.0
-    mcminusmc = maxc - minc
-    rc = (maxc - r) / mcminusmc
-    gc = (maxc - g) / mcminusmc
-    bc = (maxc - b) / mcminusmc
-    if r == maxc:
-        h = bc - gc
-    elif g == maxc:
-        h = 2.0 + rc - bc
-    else:
-        h = 4.0 + gc - rc
-    h = (h / 6.0) % 1.0
-    return h
+    r, g, b = _rgb(pixels)
+    maxc = np.maximum(np.maximum(r, g), b)
+    minc = np.minimum(np.minimum(r, g), b)
+    d = maxc - minc
+    zero = d == 0
+    d = np.where(zero, 1.0, d)
+    rc, gc, bc = (maxc - r) / d, (maxc - g) / d, (maxc - b) / d
+    h = np.where(r == maxc, bc - gc, np.where(g == maxc, 2.0 + rc - bc, 4.0 + gc - rc))
+    return np.where(zero, 0.0, np.mod(h / 6.0, 1.0))
 
 
-@functools.cache
-def saturation(pixel: typing.Tuple[int, int, int]) -> float:
+def saturation(pixels: PixelArray) -> KeyArray:
     """Sort by the saturation of a pixel according to a HLS representation."""
-    # taken from rgb_to_hls
-    r, g, b = pixel[:3]
-    maxc = max(r, g, b)
-    minc = min(r, g, b)
-    sumc = minc + maxc
-    diffc = maxc - minc
+    r, g, b = _rgb(pixels)
+    maxc = np.maximum(np.maximum(r, g), b)
+    minc = np.minimum(np.minimum(r, g), b)
+    sumc, diffc = minc + maxc, maxc - minc
     sdiv = 2.0 - diffc
-
-    if minc == maxc or sumc == 0 or sdiv == 0:
-        return 0.0
-    if sumc / 2.0 <= 0.5:
-        s = diffc / sumc
-    else:
-        s = diffc / sdiv
-    return s
+    zero = (minc == maxc) | (sumc == 0) | (sdiv == 0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        s = np.where(sumc / 2.0 <= 0.5, diffc / sumc, diffc / sdiv)
+    return np.where(zero, 0.0, s)
 
 
-def intensity(pixel: typing.Tuple[int, int, int]) -> int:
+def intensity(pixels: PixelArray) -> KeyArray:
     """Sort by the intensity of a pixel, i.e. the sum of all the RGB values."""
-    return pixel[0] + pixel[1] + pixel[2]
+    r, g, b = _rgb(pixels)
+    return r + g + b
 
 
-def minimum(pixel: typing.Tuple[int, int, int]) -> int:
+def minimum(pixels: PixelArray) -> KeyArray:
     """Sort on the minimum RGB value of a pixel (either the R, G or B)."""
-    return min(pixel[0], pixel[1], pixel[2])
+    r, g, b = _rgb(pixels)
+    return np.minimum(np.minimum(r, g), b)
 
 
-choices = {
+choices: dict[str, SortingFunction] = {
     "lightness": lightness,
     "hue": hue,
     "intensity": intensity,
     "minimum": minimum,
-    "saturation": saturation
+    "saturation": saturation,
 }

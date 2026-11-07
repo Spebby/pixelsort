@@ -16,7 +16,7 @@ setuptools.setup(
         "Upstream": "https://github.com/satyarth/pixelsort",
     },
     packages=setuptools.find_packages(),
-    install_requires=["Pillow"],
+    install_requires=["Pillow", "Numpy"],
     classifiers=[
         "Programming Language :: Python",
         "License :: OSI Approved :: MIT License",

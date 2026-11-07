@@ -1,50 +1,51 @@
 import typing
 from random import randint, random as random_range
 
-from PIL import ImageFilter, Image
+import numpy as np
+import numpy.typing as npt
+from PIL import Image, ImageFilter
 
 from pixelsort.sorting import lightness
 
 
-def edge(
-    image: Image.Image, lower_threshold: float, **_
-) -> typing.List[typing.List[int]]:
-    """Performs an edge detection, which is used to define intervals. Tweak threshold with threshold."""
-    edge_data = image.filter(ImageFilter.FIND_EDGES).convert("RGBA").load()
-    intervals = []
+def _starts(cond: npt.NDArray[np.bool_]) -> list[list[int]]:
+    """x positions where cond is True and the previous pixel wasn't (or x == 0)."""
+    prev = np.zeros_like(cond)
+    prev[:, 1:] = cond[:, :-1]
+    return [np.flatnonzero(row).tolist() for row in (cond & ~prev)]
 
-    for y in range(image.size[1]):
-        intervals.append([])
-        flag = True
-        for x in range(image.size[0]):
-            if lightness(edge_data[x, y]) < lower_threshold * 255:
-                flag = True
-            elif flag:
-                intervals[y].append(x)
-                flag = False
-    return intervals
+
+def edge(
+    image: Image.Image, lower_threshold: float, **_: typing.Any
+) -> list[list[int]]:
+    """Performs an edge detection, which is used to define intervals. Tweak threshold with threshold."""
+    edge_img = image.filter(ImageFilter.FIND_EDGES).convert("RGBA")
+    return _starts(lightness(np.asarray(edge_img)) >= lower_threshold * 255)
 
 
 def threshold(
-    image: Image.Image, lower_threshold: float, upper_threshold: float, **_
-) -> typing.List[typing.List[int]]:
+    image: Image.Image,
+    lower_threshold: float,
+    upper_threshold: float,
+    **_: typing.Any,
+) -> list[list[int]]:
     """Intervals defined by lightness thresholds; only pixels with a lightness between the upper and lower thresholds
     are sorted."""
-    intervals = []
-    image_data = image.load()
-    for y in range(image.size[1]):
-        intervals.append([])
-        for x in range(image.size[0]):
-            level = lightness(image_data[x, y])
-            if level < lower_threshold * 255 or level > upper_threshold * 255:
-                intervals[y].append(x)
-    return intervals
+    lum = lightness(np.asarray(image.convert("RGBA")))
+    return [
+        np.flatnonzero(
+            (row < lower_threshold * 255) | (row > upper_threshold * 255)
+        ).tolist()
+        for row in lum
+    ]
 
 
-def random(image, char_length, **_) -> typing.List[typing.List[int]]:
+def random(
+    image: Image.Image, char_length: float, **_: typing.Any
+) -> list[list[int]]:
     """Randomly generate intervals. Distribution of widths is linear by default. Interval widths can be scaled using
     char_length."""
-    intervals = []
+    intervals: list[list[int]] = []
 
     for y in range(image.size[1]):
         intervals.append([])
@@ -58,9 +59,11 @@ def random(image, char_length, **_) -> typing.List[typing.List[int]]:
     return intervals
 
 
-def waves(image, char_length, **_) -> typing.List[typing.List[int]]:
+def waves(
+    image: Image.Image, char_length: int, **_: typing.Any
+) -> list[list[int]]:
     """Intervals are waves of nearly uniform widths. Control width of waves with char_length."""
-    intervals = []
+    intervals: list[list[int]] = []
 
     for y in range(image.size[1]):
         intervals.append([])
@@ -74,53 +77,32 @@ def waves(image, char_length, **_) -> typing.List[typing.List[int]]:
     return intervals
 
 
-def file_mask(image, interval_image, **_) -> typing.List[typing.List[int]]:
+def file_mask(
+    image: Image.Image, interval_image: Image.Image, **_: typing.Any
+) -> list[list[int]]:
     """Intervals taken from another specified input image. Must be black and white, and the same size as the input
     image."""
-    intervals = []
-    data = interval_image.load()
-
-    for y in range(image.size[1]):
-        intervals.append([])
-        flag = True
-        for x in range(image.size[0]):
-            if data[x, y]:
-                flag = True
-            elif flag:
-                intervals[y].append(x)
-                flag = False
-    return intervals
+    return _starts(np.asarray(interval_image.convert("L")) == 0)
 
 
 def file_edges(
-    image, interval_image, lower_threshold, **_
-) -> typing.List[typing.List[int]]:
+    image: Image.Image,
+    interval_image: Image.Image,
+    lower_threshold: float,
+    **_: typing.Any,
+) -> list[list[int]]:
     """Intervals defined by performing edge detection on the file specified by -f. Must be the same size as the input
     image."""
-    edge_data = interval_image.filter(ImageFilter.FIND_EDGES).convert("RGBA").load()
-    intervals = []
-
-    for y in range(image.size[1]):
-        intervals.append([])
-        flag = True
-        for x in range(image.size[0]):
-            if lightness(edge_data[x, y]) < lower_threshold * 255:
-                flag = True
-            elif flag:
-                intervals[y].append(x)
-                flag = False
-    return intervals
+    edge_img = interval_image.filter(ImageFilter.FIND_EDGES).convert("RGBA")
+    return _starts(lightness(np.asarray(edge_img)) >= lower_threshold * 255)
 
 
-def none(image, **_) -> typing.List[typing.List[int]]:
+def none(image: Image.Image, **_: typing.Any) -> list[list[int]]:
     """Sort whole rows, only stopping at image borders."""
-    intervals = []
-    for y in range(image.size[1]):
-        intervals.append([])
-    return intervals
+    return [[] for _ in range(image.size[1])]
 
 
-choices = {
+choices: dict[str, typing.Callable[..., list[list[int]]]] = {
     "random": random,
     "threshold": threshold,
     "edges": edge,
