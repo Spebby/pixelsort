@@ -10,7 +10,68 @@ Have a look at [this post](http://satyarth.me/articles/pixel-sorting/) or [/r/pi
 
 ### Using Nix
 
-This project provides a nix flake. To build the package:
+This project provides a nix flake.
+
+#### Try Without Installing
+
+```sh
+nix run github:spebby/pixelsort
+```
+
+#### Build locally
+
+```sh
+nix build github:spebby/pixelsort
+./result/bin/pixelsort-gui
+```
+
+#### NixOS Configuration
+
+**flake.nix**
+
+```nix
+# flake.nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    pixelsort = {
+      url = "github:spebby/pixelsort";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs = inputs@{ nixpkgs, ... }:
+  let
+    lib = nixpkgs.lib;
+
+    nixpkgsConfig = {
+      nixpkgs.overlays = [ inputs.pixelsort.overlays.default ];
+    };
+  in
+  {
+    nixosConfigurations.yourhost = lib.nixosSystem {
+      specialArgs = { inherit inputs; };
+      modules = [
+        nixpkgsConfig
+        ./configuration.nix
+      ];
+    };
+  };
+}
+
+# configuration.nix
+{ pkgs, ... }:
+
+{
+  environment.systemPackages = [
+    pkgs.pixelsort-cli
+    pkgs.pixelsort-gui
+    pkgs.pixelsort-library
+  ];
+}
+```
+
+To build the package:
 
 ```sh
 nix build
