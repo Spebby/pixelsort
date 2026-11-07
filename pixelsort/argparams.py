@@ -12,67 +12,77 @@ def parse_args():
     parser.add_argument(
         "-o",
         "--output",
-        help="Output image file path, DEFAULTS to the time created.")
-    parser.add_argument("-i", "--int_function",
-                        choices=interval_choices.keys(),
-                        default=DEFAULTS["interval_function"],
-                        help="Function to determine sorting intervals")
-    parser.add_argument("-f", "--int_file",
-                        help="Image used for defining intervals.")
+        help="Output image file path, DEFAULTS to the time created.",
+    )
+    parser.add_argument(
+        "-i",
+        "--int_function",
+        choices=interval_choices.keys(),
+        default=DEFAULTS["interval_function"],
+        help="Function to determine sorting intervals",
+    )
+    parser.add_argument("-f", "--int_file", help="Image used for defining intervals.")
     parser.add_argument(
         "-t",
         "--threshold",
         type=float,
         default=DEFAULTS["lower_threshold"],
-        help="Pixels darker than this are not sorted, between 0 and 1")
+        help="Pixels darker than this are not sorted, between 0 and 1",
+    )
     parser.add_argument(
         "-u",
         "--upper_threshold",
         type=float,
         default=DEFAULTS["upper_threshold"],
-        help="Pixels brighter than this are not sorted, between 0 and 1")
+        help="Pixels brighter than this are not sorted, between 0 and 1",
+    )
     parser.add_argument(
         "-c",
         "--char_length",
         type=int,
         default=DEFAULTS["char_length"],
-        help="Characteristic length of random intervals")
+        help="Characteristic length of random intervals",
+    )
     parser.add_argument(
         "-a",
         "--angle",
         type=float,
         default=DEFAULTS["angle"],
-        help="Rotate the image by an angle (in degrees) before sorting")
+        help="Rotate the image by an angle (in degrees) before sorting",
+    )
     parser.add_argument(
         "-r",
         "--randomness",
         type=float,
         default=DEFAULTS["randomness"],
-        help="What percentage of intervals are NOT sorted")
-    parser.add_argument("-s", "--sorting_function",
-                        choices=sorting_choices.keys(),
-                        default=DEFAULTS["sorting_function"],
-                        help="Function to sort pixels by.")
+        help="What percentage of intervals are NOT sorted",
+    )
     parser.add_argument(
-        "-m", "--mask", help="Image used for masking parts of the image")
+        "-s",
+        "--sorting_function",
+        choices=sorting_choices.keys(),
+        default=DEFAULTS["sorting_function"],
+        help="Function to sort pixels by.",
+    )
+    parser.add_argument(
+        "-m",
+        "--mask",
+        help="Image used for masking parts of the image",
+    )
     parser.add_argument(
         "-l",
         "--log_level",
         default="WARNING",
         help="Print more or less info",
-        choices=[
-            "DEBUG",
-            "INFO",
-            "WARNING",
-            "ERROR",
-            "CRITICAL"])
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+    )
 
     _args = parser.parse_args()
 
     logging.basicConfig(
         format="%(name)s: %(levelname)s - %(message)s",
-        level=logging.getLevelName(
-            _args.log_level))
+        level=logging.getLevelName(_args.log_level),
+    )
 
     return {
         "image_input_path": _args.image,
@@ -85,5 +95,5 @@ def parse_args():
         "angle": _args.angle,
         "randomness": _args.randomness,
         "sorting_function": _args.sorting_function,
-        "mask_path": _args.mask
+        "mask_path": _args.mask,
     }

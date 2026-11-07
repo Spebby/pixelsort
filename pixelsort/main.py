@@ -2,29 +2,41 @@ import logging
 import typing
 
 from PIL import Image
+
 # python implementation of the PixelAccess class returned by im.load(), has the same functions so is fine for type hints
-from PIL import PyAccess
 
 from pixelsort.constants import DEFAULTS
 from pixelsort.interval import choices as interval_choices
-from pixelsort.sorter import sort_image
+from pixelsort.sorter import PixelAccess, sort_image
 from pixelsort.sorting import choices as sorting_choices
 from pixelsort.util import crop_to
 
 
 def pixelsort(
-        image: Image.Image,
-        mask_image: typing.Optional[Image.Image] = None,
-        interval_image: typing.Optional[Image.Image] = None,
-        randomness: float = DEFAULTS["randomness"],
-        char_length: float = DEFAULTS["char_length"],
-        sorting_function: typing.Literal["lightness", "hue", "saturation", "intensity", "minimum"] = DEFAULTS[
-            "sorting_function"],
-        interval_function: typing.Literal["random", "threshold", "edges", "waves", "file", "file-edges", "none"] =
-        DEFAULTS["interval_function"],
-        lower_threshold: float = DEFAULTS["lower_threshold"],
-        upper_threshold: float = DEFAULTS["upper_threshold"],
-        angle: float = DEFAULTS["angle"]
+    image: Image.Image,
+    mask_image: Image.Image | None = None,
+    interval_image: Image.Image | None = None,
+    randomness: float = DEFAULTS["randomness"],
+    char_length: float = DEFAULTS["char_length"],
+    sorting_function: typing.Literal[
+        "lightness",
+        "hue",
+        "saturation",
+        "intensity",
+        "minimum",
+    ] = DEFAULTS["sorting_function"],
+    interval_function: typing.Literal[
+        "random",
+        "threshold",
+        "edges",
+        "waves",
+        "file",
+        "file-edges",
+        "none",
+    ] = DEFAULTS["interval_function"],
+    lower_threshold: float = DEFAULTS["lower_threshold"],
+    upper_threshold: float = DEFAULTS["upper_threshold"],
+    angle: float = DEFAULTS["angle"],
 ) -> Image.Image:
     """
     pixelsorts an image
@@ -43,17 +55,18 @@ def pixelsort(
     :return: pixelsorted image
     """
     original = image
-    image = image.convert('RGBA').rotate(angle, expand=True)
+    image = image.convert("RGBA").rotate(angle, expand=True)
     image_data = image.load()
 
-    mask_image = mask_image if mask_image else Image.new(
-        "1", original.size, color=255)
-    mask_image = mask_image.convert('1').rotate(angle, expand=True, fillcolor=0)
+    mask_image = mask_image or Image.new("1", original.size, color=255)
+    mask_image = mask_image.convert("1").rotate(angle, expand=True, fillcolor=0)
     mask_data = mask_image.load()
 
-    interval_image = (interval_image
-                      .convert('1')
-                      .rotate(angle, expand=True)) if interval_image else None
+    interval_image = (
+        (interval_image.convert("1").rotate(angle, expand=True))
+        if interval_image
+        else None
+    )
     logging.debug("Determining intervals...")
     intervals = interval_choices[interval_function](
         image,
@@ -69,13 +82,10 @@ def pixelsort(
         mask_data,
         intervals,
         randomness,
-        sorting_choices[sorting_function])
+        sorting_choices[sorting_function],
+    )
 
-    output_img = _place_pixels(
-        sorted_pixels,
-        mask_data,
-        image_data,
-        image.size)
+    output_img = _place_pixels(sorted_pixels, mask_data, image_data, image.size)
     if angle != 0:
         output_img = output_img.rotate(-angle, expand=True)
         output_img = crop_to(output_img, original)
@@ -83,10 +93,14 @@ def pixelsort(
     return output_img
 
 
-def _place_pixels(pixels: PyAccess.PyAccess, mask: PyAccess.PyAccess, original: PyAccess.PyAccess,
-                  size: typing.Tuple[int, int]):
-    output_img = Image.new('RGBA', size)
-    outputdata = output_img.load()  # modifying pixelaccess modified original
+def _place_pixels(
+    pixels: list[list[tuple[int, int, int, int]]],
+    mask: PixelAccess,
+    original: PixelAccess,
+    size: tuple[int, int],
+) -> Image.Image:
+    output_img = Image.new("RGBA", size)
+    outputdata = output_img.load()
     for y in range(size[1]):
         count = 0
         for x in range(size[0]):

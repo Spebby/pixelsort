@@ -1,17 +1,29 @@
 import random
 import typing
 
-# python implementation of the PixelAccess class returned by im.load(), has the same functions so is fine for type hints
-from PIL import PyAccess
+
+Pixel = tuple[int, int, int, int]
+Coordinate = tuple[int, int]
+
+
+class PixelAccess(typing.Protocol):
+    def __getitem__(self, xy: Coordinate) -> Pixel: ...
+
+    def __setitem__(self, xy: Coordinate, value: Pixel) -> None: ...
+
+
+class MaskAccess(typing.Protocol):
+    def __getitem__(self, xy: Coordinate) -> int: ...
 
 
 def sort_image(
-        size: typing.Tuple[int, int],
-        image_data: PyAccess.PyAccess,
-        mask_data: PyAccess.PyAccess,
-        intervals: typing.List[typing.List[int]],
-        randomness: float,
-        sorting_function: typing.Callable[[typing.List[typing.Tuple[int, int, int]]], float]):
+    size: tuple[int, int],
+    image_data: PixelAccess,
+    mask_data: MaskAccess,
+    intervals: list[list[int]],
+    randomness: float,
+    sorting_function: typing.Callable[[Pixel], float],
+) -> list[list[Pixel]]:
     sorted_pixels = []
 
     for y in range(size[1]):
@@ -31,6 +43,8 @@ def sort_image(
     return sorted_pixels
 
 
-def sort_interval(interval: typing.List,
-                  sorting_function: typing.Callable[[typing.List[typing.Tuple[int, int, int]]], float]):
-    return [] if interval == [] else sorted(interval, key=sorting_function)
+def sort_interval(
+    interval: list[Pixel],
+    sorting_function: typing.Callable[[Pixel], float],
+) -> list[Pixel]:
+    return [] if not interval else sorted(interval, key=sorting_function)

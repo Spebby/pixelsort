@@ -1,27 +1,59 @@
 # pixelsort
 
+A fork of satyarth/pixelsort. This fork maintains original functionality while adapting the project for distribution with nix.
+
 ### What is Pixel Sorting?
 
 Have a look at [this post](http://satyarth.me/articles/pixel-sorting/) or [/r/pixelsorting](http://www.reddit.com/r/pixelsorting/top/)
 
-### Dependencies
+## Installation
 
-Should work in both Python 2 and 3, but Python 3 is recommended.
+### Using Nix
+
+This project provides a nix flake. To build the package:
+
+```sh
+nix build
+```
+
+The resulting executable is available at `./result/bin/pixelsort`.
+
+To run it without building a persistent result:
+
+```sh
+nix run . -- [OPTIONS]
+```
+
+### Using Python
+
+Installation without nix will not be maintained. Try the original repository instead.
+That said, as it is a Python package, it should be rather trivial to use.
+
+Python3 is recommended. Install the package and its dependencies with pip:
+
+```sh
+pip install pixelsort
+```
 
 ## Usage
 
 From the command line:
 
+```sh
+pixelsort %PathToImage% [options]
 ```
-pip install pixelsort
+
+Or, you may choose to run the python code directly:
+
+```sh
 python3 -m pixelsort %PathToImage% [options]
 ```
 
 Tip: To replicate Kim Asendorf's original [processing script](https://github.com/kimasendorf/ASDFPixelSort), first sort vertically and then horizontally in `threshold` (default) mode:
 
-```
-python3 -m pixelsort %PathToImage% -a 90
-python3 -m pixelsort %PathToSortedImage%
+```sh
+pixelsort %PathToImage% -a 90 -o /tmp/out.png
+pixelsort /tmp/out.png
 ```
 
 As a package:
@@ -36,44 +68,43 @@ As a package:
 <PIL.Image.Image image mode=RGBA size=576x324 at 0x7F8F66AA57B8>
 ```
 
-#### Parameters:
+#### Parameters
 
-Parameter 			        | Flag 	| Description
-------------------------|-------|------------
-Interval function     	| `-i`	| Controls how the intervals used for sorting are defined. See below for more details and examples. Threshold by default.
-Output path             | `-o`	| Path of output file. Uses the current time for the file name by default.
-Randomness 			        | `-r`	| What percentage of intervals *not* to sort. 0 by default.
-Threshold (lower)     	| `-t`	| How dark must a pixel be to be considered as a 'border' for sorting? Takes values from 0-1. 0.25 by default. Used in `edges` and `threshold` modes.
-Threshold (upper)     	| `-u`	| How bright must a pixel be to be considered as a 'border' for sorting? Takes values from 0-1. 0.8 by default. Used in `threshold` mode.
-Char. length		        | `-c`	| Characteristic length for the random width generator. Used in mode `random` and `waves`.
-Angle 				          | `-a`	| Angle at which you're pixel sorting in degrees. `0` (horizontal) by default.
-External interval file 	| `-f` 	| Image used to define intervals. Must be black and white.
-Sorting function        | `-s`  | Sorting function to use for sorting the pixels. Lightness by default.
-Mask                    | `-m`  | Image used for masking parts of the image.
-Logging level           | `-l`  | Level of logging statements made visible. Choices include `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`. `WARNING` by default.
+| Parameter              | Flag | Description                                                                                                                                         |
+| ---------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Interval function      | `-i` | Controls how the intervals used for sorting are defined. See below for more details and examples. Threshold by default.                             |
+| Output path            | `-o` | Path of output file. Uses the current time for the file name by default.                                                                            |
+| Randomness             | `-r` | What percentage of intervals _not_ to sort. 0 by default.                                                                                           |
+| Threshold (lower)      | `-t` | How dark must a pixel be to be considered as a 'border' for sorting? Takes values from 0-1. 0.25 by default. Used in `edges` and `threshold` modes. |
+| Threshold (upper)      | `-u` | How bright must a pixel be to be considered as a 'border' for sorting? Takes values from 0-1. 0.8 by default. Used in `threshold` mode.             |
+| Char. length           | `-c` | Characteristic length for the random width generator. Used in mode `random` and `waves`.                                                            |
+| Angle                  | `-a` | Angle at which you're pixel sorting in degrees. `0` (horizontal) by default.                                                                        |
+| External interval file | `-f` | Image used to define intervals. Must be black and white.                                                                                            |
+| Sorting function       | `-s` | Sorting function to use for sorting the pixels. Lightness by default.                                                                               |
+| Mask                   | `-m` | Image used for masking parts of the image.                                                                                                          |
+| Logging level          | `-l` | Level of logging statements made visible. Choices include `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`. `WARNING` by default.                |
 
 #### Interval Functions
 
-Interval function | Description
-------------------|------------
-`random`			    | Randomly generate intervals. Distribution of widths is linear by default. Interval widths can be scaled using `char_length`.
-`edges`				    | Performs an edge detection, which is used to define intervals. Tweak threshold with `threshold`.
-`threshold`		  	| Intervals defined by lightness thresholds; only pixels with a lightness between the upper and lower thresholds are sorted.
-`waves`			    	| Intervals are waves of nearly uniform widths. Control width of waves with `char_length`.
-`file`			    	| Intervals taken from another specified input image. Must be black and white, and the same size as the input image.
-`file-edges`	  	| Intevals defined by performing edge detection on the file specified by `-f`. Must be the same size as the input image.
-`none`			    	| Sort whole rows, only stopping at image borders.
-
+| Interval function | Description                                                                                                                  |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `random`          | Randomly generate intervals. Distribution of widths is linear by default. Interval widths can be scaled using `char_length`. |
+| `edges`           | Performs an edge detection, which is used to define intervals. Tweak threshold with `threshold`.                             |
+| `threshold`       | Intervals defined by lightness thresholds; only pixels with a lightness between the upper and lower thresholds are sorted.   |
+| `waves`           | Intervals are waves of nearly uniform widths. Control width of waves with `char_length`.                                     |
+| `file`            | Intervals taken from another specified input image. Must be black and white, and the same size as the input image.           |
+| `file-edges`      | Intervals defined by performing edge detection on the file specified by `-f`. Must be the same size as the input image.      |
+| `none`            | Sort whole rows, only stopping at image borders.                                                                             |
 
 #### Sorting Functions
 
-Sorting function  | Description
-------------------|------------
-`lightness`       | Sort by the lightness of a pixel according to a HSL representation.
-`hue`             | Sort by the hue of a pixel according to a HSL representation.
-`saturation`      | Sort by the saturation of a pixel according to a HSL representation.
-`intensity`       | Sort by the intensity of a pixel, i.e. the sum of all the RGB values.
-`minimum`         | Sort on the minimum RGB value of a pixel (either the R, G or B).
+| Sorting function | Description                                                           |
+| ---------------- | --------------------------------------------------------------------- |
+| `lightness`      | Sort by the lightness of a pixel according to a HSL representation.   |
+| `hue`            | Sort by the hue of a pixel according to a HSL representation.         |
+| `saturation`     | Sort by the saturation of a pixel according to a HSL representation.  |
+| `intensity`      | Sort by the intensity of a pixel, i.e. the sum of all the RGB values. |
+| `minimum`        | Sort on the minimum RGB value of a pixel (either the R, G or B).      |
 
 #### Examples
 
@@ -85,9 +116,9 @@ Sorting function  | Description
 
 ![edges](/examples/edges.png)
 
-* `file`: Intervals taken from image specified with `-f`. Must be black and white.
+- `file`: Intervals taken from image specified with `-f`. Must be black and white.
 
-`python3 -m pixelsort examples/image.jpg -i file -f examples/intervals.png `
+`python3 -m pixelsort examples/image.jpg -i file -f examples/intervals.png`
 
 ![file](/examples/intervals.png)
 
@@ -95,7 +126,7 @@ Sorting function  | Description
 
 ![file](/examples/file.png)
 
-* `mask`: Mask taken from image specified with `-m`. Must be black and white.
+- `mask`: Mask taken from image specified with `-m`. Must be black and white.
 
 `python3 -m pixelsort examples/image.jpg -i random -c 20 -m examples/mask.png`
 
@@ -105,8 +136,8 @@ Sorting function  | Description
 
 ### Todo
 
-* Allow defining different intervals for different channels.
+- Allow defining different intervals for different channels.
 
 ---
 
-Based on https://gist.github.com/prophetgoddess/667c5554e5d9d9a25ae6
+Based on <https://gist.github.com/prophetgoddess/667c5554e5d9d9a25ae6>

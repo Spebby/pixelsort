@@ -6,9 +6,11 @@ from PIL import ImageFilter, Image
 from pixelsort.sorting import lightness
 
 
-def edge(image: Image.Image, lower_threshold: float, **_) -> typing.List[typing.List[int]]:
+def edge(
+    image: Image.Image, lower_threshold: float, **_
+) -> typing.List[typing.List[int]]:
     """Performs an edge detection, which is used to define intervals. Tweak threshold with threshold."""
-    edge_data = image.filter(ImageFilter.FIND_EDGES).convert('RGBA').load()
+    edge_data = image.filter(ImageFilter.FIND_EDGES).convert("RGBA").load()
     intervals = []
 
     for y in range(image.size[1]):
@@ -23,9 +25,11 @@ def edge(image: Image.Image, lower_threshold: float, **_) -> typing.List[typing.
     return intervals
 
 
-def threshold(image: Image.Image, lower_threshold: float, upper_threshold: float, **_) -> typing.List[typing.List[int]]:
+def threshold(
+    image: Image.Image, lower_threshold: float, upper_threshold: float, **_
+) -> typing.List[typing.List[int]]:
     """Intervals defined by lightness thresholds; only pixels with a lightness between the upper and lower thresholds
-     are sorted."""
+    are sorted."""
     intervals = []
     image_data = image.load()
     for y in range(image.size[1]):
@@ -88,11 +92,12 @@ def file_mask(image, interval_image, **_) -> typing.List[typing.List[int]]:
     return intervals
 
 
-def file_edges(image, interval_image, lower_threshold, **_) -> typing.List[typing.List[int]]:
+def file_edges(
+    image, interval_image, lower_threshold, **_
+) -> typing.List[typing.List[int]]:
     """Intervals defined by performing edge detection on the file specified by -f. Must be the same size as the input
     image."""
-    edge_data = interval_image.filter(
-        ImageFilter.FIND_EDGES).convert('RGBA').load()
+    edge_data = interval_image.filter(ImageFilter.FIND_EDGES).convert("RGBA").load()
     intervals = []
 
     for y in range(image.size[1]):
@@ -122,5 +127,5 @@ choices = {
     "waves": waves,
     "file": file_mask,
     "file-edges": file_edges,
-    "none": none
+    "none": none,
 }

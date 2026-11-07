@@ -1,6 +1,11 @@
 #Python
 *.pyc
 
+.direnv/
+.nix-profile/
+.pre-commit-config.yaml
+.result/
+
 #VirtualEnv
 venv
 
