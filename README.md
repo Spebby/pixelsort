@@ -1,5 +1,7 @@
 # pixelsort
 
+![gui](./examples/demo.png)
+
 A fork of satyarth/pixelsort. This fork maintains original functionality while adapting the project for distribution with nix.
 
 ### What is Pixel Sorting?
